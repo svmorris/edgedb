@@ -286,8 +286,8 @@ def get_iterator_sets(stmt: irast.Stmt) -> Sequence[irast.Set]:
     iterators = []
     if stmt.iterator_stmt is not None:
         iterators.append(stmt.iterator_stmt)
-    if stmt.hoisted_iterators:
-        iterators.extend(stmt.hoisted_iterators)
+    # if stmt.hoisted_iterators:
+    #     iterators.extend(stmt.hoisted_iterators)
 
     return iterators
 

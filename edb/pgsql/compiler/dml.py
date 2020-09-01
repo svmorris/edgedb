@@ -470,6 +470,8 @@ def compile_iterator_ctes(
                     ictx.rel,
                     last_iterator.path_id,
                     env=ictx.env)
+            else:
+                ictx.volatility_ref = None
 
             clauses.compile_iterator_expr(ictx.rel, iterator_set, ctx=ictx)
             ictx.rel.path_id = iterator_set.path_id
@@ -681,7 +683,7 @@ def compile_insert_else_body(
 
             else_select_cte = pgast.CommonTableExpr(
                 query=ictx.rel,
-                name=ctx.env.aliases.get('iter')
+                name=ctx.env.aliases.get('else')
             )
             ictx.toplevel_stmt.ctes.append(else_select_cte)
 
