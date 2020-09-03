@@ -819,7 +819,7 @@ def _get_path_output(
         assert src_path_id is not None
         id_output = maybe_get_path_output(rel, src_path_id,
                                           aspect='value',
-                                          # allow_nullable=allow_nullable,
+                                          allow_nullable=allow_nullable,
                                           ptr_info=ptr_info, env=env)
         if id_output is not None:
             _put_path_output_var(rel, path_id, aspect, id_output, env=env)
@@ -921,11 +921,12 @@ def _get_path_output(
 
 def maybe_get_path_output(
         rel: pgast.BaseRelation, path_id: irast.PathId, *,
-        aspect: str,
+        aspect: str, allow_nullable: bool=True,
         ptr_info: Optional[pg_types.PointerStorageInfo]=None,
         env: context.Environment) -> Optional[pgast.OutputVar]:
     try:
         return get_path_output(rel, path_id=path_id, aspect=aspect,
+                               allow_nullable=allow_nullable,
                                ptr_info=ptr_info, env=env)
     except LookupError:
         return None
