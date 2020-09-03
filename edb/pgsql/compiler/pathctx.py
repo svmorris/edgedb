@@ -817,7 +817,10 @@ def _get_path_output(
         # reference to the Object itself.
         src_path_id = path_id.src_path()
         assert src_path_id is not None
-        id_output = rel.path_outputs.get((src_path_id, 'value'))
+        id_output = maybe_get_path_output(rel, src_path_id,
+                                          aspect='value',
+                                          # allow_nullable=allow_nullable,
+                                          ptr_info=ptr_info, env=env)
         if id_output is not None:
             _put_path_output_var(rel, path_id, aspect, id_output, env=env)
             return id_output
