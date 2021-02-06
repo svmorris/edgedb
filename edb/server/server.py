@@ -22,15 +22,20 @@ from typing import *
 
 import asyncio
 import binascii
+import collections
 import json
 import logging
+import os
 import pickle
+import socket
+import stat
 import uuid
 
 import immutables
 
 from edb import errors
 
+from edb.common import devmode
 from edb.common import taskgroup
 
 from edb.schema import reflection as s_refl
@@ -43,10 +48,11 @@ from edb.server import connpool
 from edb.server import compiler_pool
 from edb.server import defines
 from edb.server import http
-from edb.server import http_edgeql_port
-from edb.server import http_graphql_port
-from edb.server import notebook_port
-from edb.server import mng_port
+# from edb.server import http_edgeql_port
+# from edb.server import http_graphql_port
+# from edb.server import notebook_port
+# from edb.server import mng_port
+from edb.server import protocol
 from edb.server import pgcon
 
 from . import baseport
@@ -84,6 +90,8 @@ class Server:
     _std_schema: s_schema.Schema
     _refl_schema: s_schema.Schema
     _schema_class_layout: s_refl.SchemaTypeLayout
+
+    _servers: List[asyncio.Server]
 
     def __init__(
         self,
@@ -128,11 +136,13 @@ class Server:
         self._max_backend_connections = max_backend_connections
         self._compiler_pool_size = compiler_pool_size
 
+        # XXX
         self._mgmt_port = None
         self._mgmt_host_addr = nethost
         self._mgmt_port_no = netport
         self._mgmt_protocol_max = max_protocol
 
+        # XXX
         self._ports = []
         self._sys_conf_ports = {}
         self._sys_auth: Tuple[Any, ...] = tuple()
@@ -153,6 +163,35 @@ class Server:
         self._roles = immutables.Map()
         self._instance_data = immutables.Map()
         self._sys_queries = immutables.Map()
+
+        self._devmode = devmode.is_in_dev_mode()
+
+        self._binary_proto_id_counter = 0
+        self._binary_proto_num_connections = 0
+        self._accepting_connections = False
+
+        self._servers = []
+
+    def get_loop(self):
+        return self._loop
+
+    def in_dev_mode(self):
+        return self._devmode
+
+    def on_binary_client_connected(self) -> str:
+        self._binary_proto_id_counter += 1
+        return str(self._binary_proto_id_counter)
+
+    def on_binary_client_authed(self):
+        self._binary_proto_num_connections += 1
+        # self._report_connections() XXX
+
+    def on_binary_client_disconnected(self):
+        self._binary_proto_num_connections -= 1
+        # self._report_connections(action="close") XXX
+        if not self._binary_proto_num_connections and self._auto_shutdown:
+            self._accepting_connections = False
+            raise SystemExit
 
     async def _pg_connect(self, dbname):
         return await pgcon.connect(self._get_pgaddr(), dbname)
@@ -201,14 +240,14 @@ class Server:
             self._mgmt_port_no = (
                 config.lookup('listen_port', cfg) or defines.EDGEDB_PORT)
 
-        self._mgmt_port = self._new_port(
-            mng_port.ManagementPort,
-            nethost=self._mgmt_host_addr,
-            netport=self._mgmt_port_no,
-            auto_shutdown=self._auto_shutdown,
-            max_protocol=self._mgmt_protocol_max,
-            startup_script=self._startup_script,
-        )
+        # self._mgmt_port = self._new_port(
+        #     mng_port.ManagementPort,
+        #     nethost=self._mgmt_host_addr,
+        #     netport=self._mgmt_port_no,
+        #     auto_shutdown=self._auto_shutdown,
+        #     max_protocol=self._mgmt_protocol_max,
+        #     startup_script=self._startup_script,
+        # )
 
     def _populate_sys_auth(self):
         cfg = self._dbindex.get_sys_config()
@@ -220,6 +259,10 @@ class Server:
 
     def get_compiler_pool(self):
         return self._compiler_pool
+
+    def new_dbview(self, *, dbname, user, query_cache):
+        return self._dbindex.new_view(
+            dbname, user=user, query_cache=query_cache)
 
     async def acquire_pgcon(self, dbname):
         return await self._pg_pool.acquire(dbname)
@@ -637,16 +680,70 @@ class Server:
         # it to restore config values.
         ql_parser.preload()
 
-        async with taskgroup.TaskGroup() as g:
-            g.create_task(self._mgmt_port.start())
-            for port in self._ports:
-                g.create_task(port.start())
+        if self._startup_script is not None:
+            1/0
+            # await edgecon.EdgeConnection.run_script(
+            #     server=self,
+            #     database=self._startup_script.database,
+            #     user=self._startup_script.user,
+            #     script=self._startup_script.text,
+            # )
 
-        sys_config = self._dbindex.get_sys_config()
-        ports = config.lookup('ports', sys_config)
-        if ports:
-            for portconf in ports:
-                await self._start_portconf(portconf, suppress_errors=True)
+        nethost = await _fix_localhost(
+            self._mgmt_host_addr, self._mgmt_port_no)
+
+        tcp_srv = await self._loop.create_server(
+            lambda: protocol.HttpProtocol(self),
+            host=nethost, port=self._mgmt_port_no)
+
+        try:
+            unix_sock_path = os.path.join(
+                self._runstate_dir, f'.s.EDGEDB.{self._mgmt_port_no}')
+            unix_srv = await self._loop.create_unix_server(
+                lambda: protocol.HttpProtocol(self),
+                unix_sock_path)
+        except Exception:
+            tcp_srv.close()
+            await tcp_srv.wait_closed()
+            raise
+
+        try:
+            admin_unix_sock_path = os.path.join(
+                self._runstate_dir, f'.s.EDGEDB.admin.{self._mgmt_port_no}')
+            admin_unix_srv = await self._loop.create_unix_server(
+                lambda: protocol.HttpProtocol(self, external_auth=True),
+                admin_unix_sock_path)
+            os.chmod(admin_unix_sock_path, stat.S_IRUSR | stat.S_IWUSR)
+        except Exception:
+            tcp_srv.close()
+            await tcp_srv.wait_closed()
+            unix_srv.close()
+            await unix_srv.wait_closed()
+            raise
+
+        self._servers.append(tcp_srv)
+        if len(nethost) > 1:
+            host_str = f"{{{', '.join(nethost)}}}"
+        else:
+            host_str = next(iter(nethost))
+        logger.info('Serving on %s:%s', host_str, self._mgmt_port_no)
+        self._servers.append(unix_srv)
+        logger.info('Serving on %s', unix_sock_path)
+        self._servers.append(admin_unix_srv)
+        logger.info('Serving admin on %s', admin_unix_sock_path)
+
+        self._accepting_connections = True
+
+        # async with taskgroup.TaskGroup() as g:
+        #     g.create_task(self._mgmt_port.start())
+        #     for port in self._ports:
+        #         g.create_task(port.start())
+
+        # sys_config = self._dbindex.get_sys_config()
+        # ports = config.lookup('ports', sys_config)
+        # if ports:
+        #     for portconf in ports:
+        #         await self._start_portconf(portconf, suppress_errors=True)
 
         self._serving = True
 
@@ -661,15 +758,15 @@ class Server:
         try:
             self._serving = False
 
-            async with taskgroup.TaskGroup() as g:
-                for port in self._ports:
-                    g.create_task(port.stop())
-                self._ports.clear()
-                for port in self._sys_conf_ports.values():
-                    g.create_task(port.stop())
-                self._sys_conf_ports.clear()
-                g.create_task(self._mgmt_port.stop())
-                self._mgmt_port = None
+            # async with taskgroup.TaskGroup() as g:
+            #     for port in self._ports:
+            #         g.create_task(port.stop())
+            #     self._ports.clear()
+            #     for port in self._sys_conf_ports.values():
+            #         g.create_task(port.stop())
+            #     self._sys_conf_ports.clear()
+            #     g.create_task(self._mgmt_port.stop())
+            #     self._mgmt_port = None
         finally:
             pgcon = await self._acquire_sys_pgcon()
             self._sys_pgcon_waiters = None
@@ -699,3 +796,47 @@ class Server:
 
     def get_backend_runtime_params(self) -> Any:
         return self._cluster.get_runtime_params()
+
+
+async def _fix_localhost(host, port):
+    # On many systems 'localhost' resolves to _both_ IPv4 and IPv6
+    # addresses, even if the system is not capable of handling
+    # IPv6 connections.  Due to the common nature of this issue
+    # we explicitly disable the AF_INET6 component of 'localhost'.
+
+    if (isinstance(host, str)
+            or not isinstance(host, collections.abc.Iterable)):
+        hosts = [host]
+    else:
+        hosts = list(host)
+
+    try:
+        idx = hosts.index('localhost')
+    except ValueError:
+        # No localhost, all good
+        return hosts
+
+    loop = asyncio.get_running_loop()
+    localhost = await loop.getaddrinfo(
+        'localhost',
+        port,
+        family=socket.AF_UNSPEC,
+        type=socket.SOCK_STREAM,
+        flags=socket.AI_PASSIVE,
+        proto=0,
+    )
+
+    infos = [a for a in localhost if a[0] == socket.AF_INET]
+
+    if not infos:
+        # "localhost" did not resolve to an IPv4 address,
+        # let create_server handle the situation.
+        return hosts
+
+    # Replace 'localhost' with explicitly resolved AF_INET addresses.
+    hosts.pop(idx)
+    for info in reversed(infos):
+        addr, *_ = info[4]
+        hosts.insert(idx, addr)
+
+    return hosts

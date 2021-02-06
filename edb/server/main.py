@@ -53,7 +53,7 @@ from . import defines
 from . import logsetup
 from . import pgconnparams
 from . import pgcluster
-from . import mng_port
+from . import protocol
 
 
 logger = logging.getLogger('edb.server')
@@ -477,14 +477,14 @@ def _protocol_version(
     try:
         minor, major = map(int, value.split('.'))
         ver = minor, major
-        if ver < mng_port.MIN_PROTOCOL or ver > mng_port.CURRENT_PROTOCOL:
+        if ver < protocol.MIN_PROTOCOL or ver > protocol.CURRENT_PROTOCOL:
             raise ValueError()
     except ValueError:
         raise click.UsageError(
             f"protocol version must be in the form "
             f"MAJOR.MINOR, in the range of "
-            f"{mng_port.MIN_PROTOCOL[0]}.{mng_port.MIN_PROTOCOL[1]} - "
-            f"{mng_port.CURRENT_PROTOCOL[0]}.{mng_port.CURRENT_PROTOCOL[1]}")
+            f"{protocol.MIN_PROTOCOL[0]}.{protocol.MIN_PROTOCOL[1]} - "
+            f"{protocol.CURRENT_PROTOCOL[0]}.{protocol.CURRENT_PROTOCOL[1]}")
     return ver
 
 
@@ -593,7 +593,7 @@ _server_options = [
              'connection is closed'),
     click.option(
         '--max-protocol', type=str, callback=_protocol_version,
-        default='.'.join(map(str, mng_port.CURRENT_PROTOCOL)),
+        default='.'.join(map(str, protocol.CURRENT_PROTOCOL)),
         help='maximum supported and advertized client protocol version'),
     click.option(
         '--version', is_flag=True,
