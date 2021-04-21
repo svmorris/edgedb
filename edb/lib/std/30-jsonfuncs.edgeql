@@ -190,6 +190,14 @@ CREATE CAST FROM std::bool TO std::json {
 };
 
 
+CREATE CAST FROM std::bytes TO std::json {
+    SET volatility := 'Stable';
+    USING SQL $$
+    SELECT to_jsonb(encode(val, 'base64'));
+    $$;
+};
+
+
 CREATE CAST FROM std::uuid TO std::json {
     SET volatility := 'Stable';
     USING SQL FUNCTION 'to_jsonb';
@@ -262,6 +270,14 @@ CREATE CAST FROM std::json TO std::uuid {
     SET volatility := 'Stable';
     USING SQL $$
     SELECT edgedb.jsonb_extract_scalar(val, 'string')::uuid;
+    $$;
+};
+
+
+CREATE CAST FROM std::json TO std::bytes {
+    SET volatility := 'Stable';
+    USING SQL $$
+    SELECT decode(edgedb.jsonb_extract_scalar(val, 'string'), 'base64')::bytea;
     $$;
 };
 

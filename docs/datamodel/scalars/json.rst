@@ -11,8 +11,7 @@ JSON
 
     Arbitrary JSON data.
 
-    Any other type (except for :eql:type:`bytes`) can be
-    :eql:op:`cast <CAST>` to and from JSON:
+    Any other type can be :eql:op:`cast <CAST>` to and from JSON:
 
     .. code-block:: edgeql-repl
 
