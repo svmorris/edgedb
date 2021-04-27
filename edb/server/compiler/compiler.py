@@ -410,6 +410,10 @@ class Compiler:
                     sql, argmap = self._compile_schema_storage_stmt(ctx, eql)
                     argnames = tuple(arg.name for arg in argmap)
 
+                    if not argnames:
+                        raise ValueError(
+                            f"no argnames in delta reflection: {eql}, {args}")
+
                     func = pg_dbops.Function(
                         name=fname,
                         args=[(argname, 'json') for argname in argnames],

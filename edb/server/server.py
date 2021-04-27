@@ -422,6 +422,11 @@ class Server:
                 args=(),
             )
 
+            for r in json.loads(reflection_cache_json):
+                if not r['argnames']:
+                    raise ValueError(
+                        f"no argnames in loaded reflection record: {r}")
+
             reflection_cache = immutables.Map({
                 r['eql_hash']: tuple(r['argnames'])
                 for r in json.loads(reflection_cache_json)
