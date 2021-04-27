@@ -1414,6 +1414,18 @@ class TestEdgeQLJSON(tb.QueryTestCase):
             ['"Zm9v"'],
         )
 
+        await self.assert_query_result(
+            r""" SELECT <json>(foo := b'hello', bar := [b'world']); """,
+            [{'bar': ['d29ybGQ='], 'foo': 'aGVsbG8='}],
+            ['{"bar": ["d29ybGQ="], "foo": "aGVsbG8="}'],
+        )
+
+        await self.assert_query_result(
+            r""" SELECT <json>sys::Database{ x := b'hello' } LIMIT 1; """,
+            [{'x': 'aGVsbG8='}],
+            ['{"x": "aGVsbG8="}'],
+        )
+
     async def test_edgeql_json_alias_01(self):
         await self.assert_query_result(
             r'''

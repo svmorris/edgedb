@@ -523,11 +523,14 @@ def compile_TypeCast(
                 # JSON wants type shapes and acts as an output sink.
                 subctx.expr_exposed = True
                 subctx.inhibit_implicit_limit = True
+                subctx.in_json_cast = True
+
             ir_expr = dispatch.compile(expr.expr, ctx=subctx)
 
-    return casts.compile_cast(
-        ir_expr, target_stype, cardinality_mod=expr.cardinality_mod,
-        ctx=ctx, srcctx=expr.expr.context)
+    with ctx.new() as subctx:
+        return casts.compile_cast(
+            ir_expr, target_stype, cardinality_mod=expr.cardinality_mod,
+            ctx=subctx, srcctx=expr.expr.context)
 
 
 @dispatch.compile.register(qlast.Introspect)

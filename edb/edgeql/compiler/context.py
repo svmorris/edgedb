@@ -487,6 +487,9 @@ class ContextLevel(compiler.ContextLevel):
     in_temp_scope: bool
     """Whether currently in a temporary scope."""
 
+    in_json_cast: bool
+    """Whether currently in a json cast."""
+
     disable_shadowing: Set[Union[s_obj.Object, s_pointers.PseudoPointer]]
     """A set of schema objects for which the shadowing rewrite should be
        disabled."""
@@ -553,6 +556,7 @@ class ContextLevel(compiler.ContextLevel):
             self.compiling_update_shape = False
             self.in_conditional = None
             self.in_temp_scope = False
+            self.in_json_cast = False
             self.disable_shadowing = set()
             self.path_log = None
             self.recompiling_schema_alias = False
@@ -601,6 +605,7 @@ class ContextLevel(compiler.ContextLevel):
             self.compiling_update_shape = prevlevel.compiling_update_shape
             self.in_conditional = prevlevel.in_conditional
             self.in_temp_scope = prevlevel.in_temp_scope
+            self.in_json_cast = prevlevel.in_json_cast
             self.disable_shadowing = prevlevel.disable_shadowing
             self.path_log = prevlevel.path_log
             self.recompiling_schema_alias = prevlevel.recompiling_schema_alias

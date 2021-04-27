@@ -72,7 +72,6 @@ def process_view(
     parser_context: pctx.ParserContext,
     ctx: context.ContextLevel,
 ) -> s_objtypes.ObjectType:
-
     cache_key = (stype, is_insert, is_update, is_delete, tuple(elements))
     view_scls = ctx.shape_type_cache.get(cache_key)
     if view_scls is not None:
@@ -599,6 +598,12 @@ def _normalize_view_ptr_expr(
                 pass
 
         qlexpr = astutils.ensure_qlstmt(compexpr)
+
+        if ctx.in_json_cast:
+            qlexpr = astutils.ensure_qlstmt(qlast.TypeCast(
+                expr=qlexpr,
+                type=qlast.TypeName(maintype=qlast.ObjectRef(name='json')),
+            ))
 
         if ((ctx.expr_exposed or ctx.stmt is ctx.toplevel_stmt)
                 and ctx.implicit_limit
