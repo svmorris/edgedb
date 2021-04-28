@@ -1315,16 +1315,49 @@ def setup_test_cases(cases, conn, num_jobs, verbose=False):
                 # more tasks than `--jobs` won't necessarily make
                 # things faster.)
                 sem = asyncio.BoundedSemaphore(num_jobs)
+                initializing = set()
+
+                def status_msg() -> str:
+                    if initializing:
+                        init_list = list(sorted(initializing))
+                        if len(init_list) > 3:
+                            init_list_str = ", ".join(
+                                f'"{db}"' for db in init_list[:3]
+                            )
+                            msg = (
+                                f'initializing: {init_list_str}'
+                                f' and {len(init_list) - 5} more'
+                            )
+                        else:
+                            init_list_str = ", ".join(
+                                f'"{db}"' for db in init_list
+                            )
+                            msg = f'initializing: {init_list_str}'
+
+                        return msg
+                    else:
+                        return None
 
                 async def controller(coro, dbname, *args):
                     async with sem:
+                        initializing.add(dbname)
                         await coro(dbname, *args)
                         if verbose:
+                            initializing.discard(dbname)
                             print(f' -> {dbname}: OK', flush=True)
+
+                async def progress():
+                    await asyncio.sleep(1.0)
+                    while status := status_msg():
+                        print(f'    ... currently {status}')
+                        await asyncio.sleep(5.0)
+
+                g.create_task(progress())
 
                 for _case, dbname, setup_script in setup:
                     g.create_task(controller(
                         _setup_database, dbname, setup_script, conn, stats))
+
         return stats
 
     return asyncio.run(_run())
