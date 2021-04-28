@@ -178,12 +178,46 @@ def test(*, files, jobs, shard, include, exclude, verbose, quiet, debug,
                     f'expected a Python package name', fg='red')
                 sys.exit(1)
 
-        with _coverage_wrapper(cov):
-            result = run()
+        with _signal_catcher():
+            with _coverage_wrapper(cov):
+                result = run()
     else:
-        result = run()
+        with _signal_catcher():
+            result = run()
 
     sys.exit(result)
+
+
+@contextlib.contextmanager
+def _signal_catcher():
+    import signal
+
+    def sighandler(sig, _):
+        print(f"edb test: caught signal {sig!r}, exiting")
+        sys.exit(sig)
+
+    signals = {}
+
+    for sig in signal.valid_signals():
+        if sig is signal.SIGCHLD:
+            continue
+
+        try:
+            signals[sig] = signal.getsignal(sig)
+            signal.signal(sig, sighandler)
+        except Exception:
+            pass
+
+    try:
+        yield
+    finally:
+        for sig, handler in signals.items():
+            if handler is None:
+                handler = signal.SIG_DFL
+            try:
+                signal.signal(sig, handler)
+            except Exception:
+                pass
 
 
 @contextlib.contextmanager
