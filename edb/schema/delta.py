@@ -2316,9 +2316,9 @@ class ObjectCommand(Command, Generic[so.Object_T]):
             return object_desc
         else:
             if object is None:
-                object = getattr(self, 'scls', _dummy_object)
+                object = getattr(self, 'scls', None)
 
-            if object is _dummy_object or schema is None:
+            if object is None or schema is None:
                 if not isinstance(parent_op, ObjectCommand):
                     parent_desc = None
                 else:

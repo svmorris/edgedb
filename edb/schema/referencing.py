@@ -526,9 +526,8 @@ class ReferencedObjectCommand(ReferencedObjectCommandBase[ReferencedT]):
                       context: sd.CommandContext
                       ) -> Type[qlast.DDLOperation]:
         subject_ctx = self.get_referrer_context(context)
-        ref_astnode: Type[qlast.DDLOperation] = getattr(self,
-                                                        'referenced_astnode',
-                                                        None)
+        ref_astnode: Optional[Type[qlast.DDLOperation]] = getattr(
+            self, 'referenced_astnode', None)
         if subject_ctx is not None and ref_astnode is not None:
             return ref_astnode
         else:

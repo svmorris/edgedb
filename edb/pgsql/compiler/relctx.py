@@ -76,7 +76,8 @@ def pull_path_namespace(
         if isinstance(source_q, pgast.Query):
             s_paths.update(source_q.path_rvar_map)
 
-        view_path_id_map = getattr(source_q, 'view_path_id_map', {})
+        view_path_id_map: Dict[irast.PathId, irast.PathId] = getattr(
+            source_q, 'view_path_id_map', {})
 
         for path_id, aspect in s_paths:
             orig_path_id = path_id

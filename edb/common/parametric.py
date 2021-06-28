@@ -122,7 +122,7 @@ class ParametricType:
         # TypeVar remapping and generally check for type sanity.
 
         ob = getattr(cls, '__orig_bases__', ())
-        generic_params = []
+        generic_params: List[Any] = []
 
         for b in ob:
             if (
@@ -147,7 +147,7 @@ class ParametricType:
                 continue
 
             base_params = getattr(org, '__parameters__', ())
-            base_non_type_params = getattr(org, '_non_type_params', {})
+            base_non_type_params: Any = getattr(org, '_non_type_params', {})
             args = typing_inspect.get_args(b)
             expected = len(base_params)
             if len(args) != expected:

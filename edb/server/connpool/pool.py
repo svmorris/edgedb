@@ -512,7 +512,8 @@ class BasePool(typing.Generic[C]):
             )
             block.connect_failures_num += 1
 
-            if getattr(e, 'fields', {}).get('C') == '3D000':
+            fields: typing.Mapping[str, str] = getattr(e, 'fields', {})
+            if fields.get('C') == '3D000':
                 # 3D000 - INVALID CATALOG NAME, database does not exist
                 # Skip retry and propagate the error immediately
                 if block.connect_failures_num <= CONNECT_FAILURE_RETRIES:

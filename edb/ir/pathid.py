@@ -330,7 +330,7 @@ class PathId:
         result = self.__class__()
         result._path = self._path + ((ptrref, direction), target_ref)
         link_name = ptrref.path_id_name or ptrref.name
-        lnk = (link_name, direction, is_linkprop)
+        lnk = (str(link_name), direction, is_linkprop)
         result._is_linkprop = is_linkprop
 
         if target_ref.material_type is not None:

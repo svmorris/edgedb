@@ -830,7 +830,7 @@ def _register_item(
                 if base_item in ctx.objects:
                     deps.add(base_item)
 
-    ast_subcommands = getattr(decl, 'commands', [])
+    ast_subcommands: List[qlast.DDLOperation] = getattr(decl, 'commands', [])
     commands = []
     if ast_subcommands:
         subcmds: List[qlast.DDLOperation] = []
