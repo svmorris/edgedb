@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from edb.schema import functions as s_func
     from edb.schema import objects as s_obj
     from edb.schema import name as s_name
+    from edb.schema import sources as s_sources
     from edb.schema import types as s_types
     from edb.schema import pointers as s_pointers
 
@@ -78,6 +79,9 @@ class GlobalCompilerOptions:
     #: This is meant to be a temporary flag, needed while we iron out
     #: multiplicity issues.
     validate_multiplicity: bool = False
+
+    #: Set to true during stdlib bootstrap.
+    stdmode: bool = False
 
 
 @dataclass

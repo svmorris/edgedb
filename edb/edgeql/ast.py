@@ -933,11 +933,15 @@ class CreateConcretePointer(CreateObject, BasesMixin):
     cardinality: qltypes.SchemaCardinality
 
 
+class AlterConcretePointer(AlterObject):
+    __abstract_node__ = True
+
+
 class CreateConcreteProperty(CreateConcretePointer, PropertyCommand):
     pass
 
 
-class AlterConcreteProperty(AlterObject, PropertyCommand):
+class AlterConcreteProperty(AlterConcretePointer, PropertyCommand):
     pass
 
 
@@ -1010,7 +1014,7 @@ class CreateConcreteLink(
     pass
 
 
-class AlterConcreteLink(AlterObject, LinkCommand):
+class AlterConcreteLink(AlterConcretePointer, LinkCommand):
     pass
 
 

@@ -294,10 +294,17 @@ def sort_by_cross_refs(
     """
     graph = {}
     for x in objs:
+        refs = itertools.chain.from_iterable(
+            objs
+            for (reft, fn), objs in schema.get_referrers_ex(x).items()
+            if not reft.get_field(fn).weak_ref
+        )
+
         graph[x] = topological.DepGraphEntry(
             item=x,
-            deps={ref for ref in schema.get_referrers(x)
-                  if not x.is_parent_ref(schema, ref)},
+            deps={
+                ref for ref in refs if not x.is_parent_ref(schema, ref)
+            },
             extra=False,
         )
 
@@ -2112,6 +2119,18 @@ class ObjectCommand(Command, Generic[so.Object_T]):
     ) -> Optional[str]:
         return None
 
+    def get_field_for_ast_attr(
+        self,
+        astnode: qlast.SetField,
+    ) -> so.Field[Any]:
+        propname = astnode.name
+        try:
+            return self.get_schema_metaclass().get_field(propname)
+        except LookupError:
+            raise errors.SchemaDefinitionError(
+                f'{propname!r} is not a valid field',
+                context=astnode.context) from None
+
     def get_ddl_identity_fields(
         self,
         context: CommandContext,
@@ -3649,12 +3668,7 @@ class AlterObjectProperty(Command):
         ):
             return Nop()
         else:
-            try:
-                field = parent_cls.get_field(propname)
-            except LookupError:
-                raise errors.SchemaDefinitionError(
-                    f'{propname!r} is not a valid field',
-                    context=astnode.context)
+            field = parent_op.get_field_for_ast_attr(astnode)
 
         if not (
             astnode.special_syntax

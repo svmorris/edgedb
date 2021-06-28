@@ -3902,6 +3902,7 @@ def _generate_schema_aliases(
     schema_objs = schema.get_objects(
         type=s_objtypes.ObjectType,
         included_modules=(module,),
+        extra_filters=[lambda schema, obj: not obj.is_view(schema)],
     )
 
     for schema_obj in schema_objs:

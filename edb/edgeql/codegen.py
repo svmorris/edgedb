@@ -20,6 +20,7 @@
 from __future__ import annotations
 from typing import *
 
+import copy
 import itertools
 import re
 
@@ -1443,6 +1444,18 @@ class EdgeQLSourceGenerator(codegen.SourceGenerator):
                     self.visit(node.target)
                     self.write(')')
 
+        if not isinstance(node.target, qlast.TypeExpr) and not pure_computable:
+            node = copy.copy(node)
+            node.commands = list(node.commands)
+            node.commands.insert(
+                0,
+                qlast.SetField(
+                    name='expr',
+                    value=node.target,
+                    special_syntax=True,
+                ),
+            )
+
         self._visit_CreateObject(
             node, *keywords, after_name=after_name, unqualified=True,
             render_commands=not pure_computable)
@@ -1557,6 +1570,18 @@ class EdgeQLSourceGenerator(codegen.SourceGenerator):
                 and not isinstance(node.target, qlast.TypeExpr)
             )
         )
+
+        if not isinstance(node.target, qlast.TypeExpr) and not pure_computable:
+            node = copy.copy(node)
+            node.commands = list(node.commands)
+            node.commands.insert(
+                0,
+                qlast.SetField(
+                    name='expr',
+                    value=node.target,
+                    special_syntax=True,
+                ),
+            )
 
         self._visit_CreateObject(
             node, *keywords, after_name=after_name, unqualified=True,

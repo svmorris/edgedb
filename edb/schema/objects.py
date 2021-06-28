@@ -1224,6 +1224,13 @@ class Object(s_abc.Object, ObjectContainer, metaclass=ObjectMeta):
     def is_type(self) -> bool:
         return False
 
+    def is_equal_materially(
+        self,
+        schema: s_schema.Schema,
+        other: Object,
+    ) -> bool:
+        return self == Object
+
     def hash_criteria(
         self: Object_T, schema: s_schema.Schema
     ) -> FrozenSet[HashCriterion]:
@@ -2838,6 +2845,13 @@ class SubclassableObject(Object):
                 return True
             else:
                 return self._issubclass(schema, parent)
+
+    def is_subclass_materially(
+        self,
+        schema: s_schema.Schema,
+        parent: Union[SubclassableObject, Tuple[SubclassableObject, ...]],
+    ) -> bool:
+        return self.issubclass(schema, parent)
 
 
 InheritingObjectT = TypeVar('InheritingObjectT', bound='InheritingObject')

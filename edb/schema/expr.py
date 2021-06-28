@@ -148,6 +148,7 @@ class Expression(struct.MixedRTStruct, so.ObjectContainer, s_abc.Expression):
         *,
         options: Optional[qlcompiler.CompilerOptions] = None,
         as_fragment: bool = False,
+        as_statement: bool = False,
     ) -> Expression:
 
         from edb.ir import ast as irast_
@@ -159,8 +160,15 @@ class Expression(struct.MixedRTStruct, so.ObjectContainer, s_abc.Expression):
                 options=options,
             )
         else:
+            stmt: qlast_.Base
+
+            if as_statement and not isinstance(expr.qlast, qlast_.Statement):
+                stmt = qlast_.SelectQuery(result=expr.qlast)
+            else:
+                stmt = expr.qlast
+
             ir = qlcompiler.compile_ast_to_ir(
-                expr.qlast,
+                stmt,
                 schema=schema,
                 options=options,
             )

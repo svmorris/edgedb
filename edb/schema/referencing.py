@@ -841,13 +841,13 @@ class ReferencedInheritingObjectCommand(
         context: sd.CommandContext,
         scls: ReferencedInheritingObject,
         cb: Callable[[sd.ObjectCommand[so.Object], sn.Name], None]
-    ) -> s_schema.Schema:
+    ) -> None:
         for ctx in reversed(context.stack):
             if (
                 isinstance(ctx.op, sd.ObjectCommand)
                 and ctx.op.get_annotation('implicit_propagation')
             ):
-                return schema
+                return
 
         referrer_ctx = self.get_referrer_context(context)
         if referrer_ctx:
@@ -870,15 +870,13 @@ class ReferencedInheritingObjectCommand(
 
             self.add(d_alter_root)
 
-        return schema
-
     def _propagate_ref_field_alter_in_inheritance(
         self,
         schema: s_schema.Schema,
         context: sd.CommandContext,
         field_name: str,
         require_inheritance_consistency: bool = True,
-    ) -> s_schema.Schema:
+    ) -> None:
         """Validate and propagate a field alteration to children.
 
         This method also performs consistency checks against base objects
@@ -899,7 +897,10 @@ class ReferencedInheritingObjectCommand(
                 base_value = base.get_field_value(schema, field_name)
 
                 if isinstance(value, so.SubclassableObject):
-                    if not value.issubclass(schema, base_value):
+                    if not value.is_subclass_materially(schema, base_value):
+                        non_altered_bases.append(base)
+                elif isinstance(value, so.Object):
+                    if not value.is_equal_materially(schema, base_value):
                         non_altered_bases.append(base)
                 else:
                     if value != base_value:
@@ -950,10 +951,7 @@ class ReferencedInheritingObjectCommand(
             )
             alter_cmd.add(s_t)
 
-        schema = self._propagate_ref_op(
-            schema, context, scls, cb=_propagate)
-
-        return schema
+        self._propagate_ref_op(schema, context, scls, cb=_propagate)
 
     def _drop_owned_refs(
         self,
@@ -1378,15 +1376,16 @@ class RenameReferencedInheritingObject(
                         context=self.source_context,
                     )
 
-            schema = self._propagate_ref_rename(schema, context, scls)
+            self._propagate_ref_rename(schema, context, scls)
 
         return schema
 
-    def _propagate_ref_rename(self,
-                              schema: s_schema.Schema,
-                              context: sd.CommandContext,
-                              scls: ReferencedInheritingObject
-                              ) -> s_schema.Schema:
+    def _propagate_ref_rename(
+        self,
+        schema: s_schema.Schema,
+        context: sd.CommandContext,
+        scls: ReferencedInheritingObject
+    ) -> None:
         rename_cmdcls = sd.get_object_command_class_or_die(
             sd.RenameObject, type(scls))
 
@@ -1400,7 +1399,7 @@ class RenameReferencedInheritingObject(
 
             alter_cmd.add(rename_cmd)
 
-        return self._propagate_ref_op(schema, context, scls, cb=_ref_rename)
+        self._propagate_ref_op(schema, context, scls, cb=_ref_rename)
 
     def _get_ast(
         self,

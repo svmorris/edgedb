@@ -284,14 +284,12 @@ class ObjectType(
         self,
         schema: s_schema.Schema,
     ) -> Optional[sd.DeleteObject[ObjectType]]:
-        # References to aliases can only occur inside other aliases,
-        # so when they go, we need to delete the reference also.
-        # Compound types also need to be deleted when their last
-        # referrer goes.
+        # Aliases and compound types need to be removed once the last
+        # reference to them goes away.
         if (
-            self.is_view(schema)
-            and self.get_alias_is_persistent(schema)
-        ) or self.is_compound_type(schema):
+            self.get_alias_is_persistent(schema)
+            or self.is_compound_type(schema)
+        ):
             return self.init_delta_command(
                 schema,
                 sd.DeleteObject,
@@ -495,7 +493,7 @@ class AlterObjectType(ObjectTypeCommand,
             orig_disable = context.disable_dep_verification
 
             for union in unions:
-                if union.get_is_opaque_union(schema):
+                if union.get_is_opaque_union(schema) or union.is_view(schema):
                     continue
 
                 delete = union.init_delta_command(schema, sd.DeleteObject)

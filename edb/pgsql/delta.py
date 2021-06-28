@@ -3726,6 +3726,7 @@ class CreateLink(LinkMetaCommand, adapts=s_links.CreateLink):
                 link.get_cardinality(schema).is_multi()
                 and link.get_required(schema)
                 and not sets_required
+                and not link.is_pure_computable(schema)
             ):
                 self._alter_pointer_optionality(
                     schema, schema, context, fill_expr=None)
@@ -4113,6 +4114,7 @@ class CreateProperty(PropertyMetaCommand, adapts=s_props.CreateProperty):
                 prop.get_cardinality(schema).is_multi()
                 and prop.get_required(schema)
                 and not sets_required
+                and not prop.is_pure_computable(schema)
             ):
                 self._alter_pointer_optionality(
                     schema, schema, context, fill_expr=None)
@@ -4164,6 +4166,7 @@ class SetPropertyType(
             not pop.maybe_get_object_aux_data('from_alias')
             and not self.scls.is_endpoint_pointer(schema)
             and (orig_type != new_type or self.cast_expr is not None)
+            and not self.scls.is_pure_computable(schema)
         ):
             self._alter_pointer_type(self.scls, schema, orig_schema, context)
         return schema

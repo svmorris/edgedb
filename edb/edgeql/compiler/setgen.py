@@ -684,7 +684,6 @@ def resolve_ptr(
                 direction=direction,
                 components=ptrs,
                 opaque=opaque,
-                modname=ctx.derived_target_module,
             )
 
     if ptr is not None:
@@ -1195,7 +1194,9 @@ def computable_ptr_set(
         inner_source_path_id = comp_info.path_id
         path_id_ns = comp_info.path_id_ns
     except KeyError:
-        comp_expr = ptrcls.get_expr(ctx.env.schema)
+        target = ptrcls.get_target(ctx.env.schema)
+        assert target is not None
+        comp_expr = target.get_expr(ctx.env.schema)
         schema_qlexpr: Optional[qlast.Expr] = None
         if comp_expr is None and ctx.env.options.apply_query_rewrites:
             schema_deflt = ptrcls.get_schema_reflection_default(ctx.env.schema)
@@ -1244,7 +1245,10 @@ def computable_ptr_set(
         # type.
         target_scls = ptrcls.get_target(ctx.env.schema)
         assert target_scls is not None
-        if not target_scls.is_object_type():
+        if (
+            not target_scls.is_object_type()
+            and not target_scls.is_view(ctx.env.schema)
+        ):
             schema_qlexpr = qlast.TypeCast(
                 type=typegen.type_to_ql_typeref(
                     target_scls, ctx=ctx),

@@ -199,6 +199,7 @@ def derive_view(
             ctx.env.schema,
             name=derived_name,
             attrs=attrs,
+            stdmode=ctx.env.options.stdmode,
         )
 
     elif isinstance(stype, s_obj.DerivableInheritingObject):
@@ -222,6 +223,7 @@ def derive_view(
                 inheritance_refdicts={'pointers'},
                 mark_derived=True,
                 transient=True,
+                stdmode=ctx.env.options.stdmode,
                 preserve_path_id=preserve_path_id,
                 attrs=attrs,
             )
@@ -482,7 +484,10 @@ def derive_dummy_ptr(
         derived_obj_name, None, type=s_obj.QualifiedObject)
     if derived_obj is None:
         ctx.env.schema, derived_obj = stdobj.derive_subtype(
-            ctx.env.schema, name=derived_obj_name)
+            ctx.env.schema,
+            name=derived_obj_name,
+            stdmode=ctx.env.options.stdmode,
+        )
         ctx.env.created_schema_objects.add(derived_obj)
 
     derived_name = ptr.get_derived_name(

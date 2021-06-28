@@ -389,6 +389,8 @@ def define_alias(
     *,
     expr: s_expr.Expression,
     prev_expr: Optional[s_expr.Expression] = None,
+    source: Optional[so.Object] = None,
+    source_ptr: Optional[str] = None,
     classname: sn.QualName,
     schema: s_schema.Schema,
     parser_context: Optional[parsing.ParserContext] = None,
@@ -512,6 +514,10 @@ def define_alias(
                 'view Create/Alter command')
 
     type_cmd.set_attribute_value('expr', expr)
+    if source is not None:
+        type_cmd.set_attribute_value('source', source.as_shell(schema))
+    if source_ptr is not None:
+        type_cmd.set_attribute_value('source_ptr', source_ptr)
 
     result = sd.CommandGroup()
     result.update(derived_delta.get_subcommands())
