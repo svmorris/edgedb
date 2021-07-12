@@ -473,8 +473,10 @@ class RebaseObjectType(ObjectTypeCommand,
     pass
 
 
-class AlterObjectType(ObjectTypeCommand,
-                      inheriting.AlterInheritingObject[ObjectType]):
+class AlterObjectType(
+    ObjectTypeCommand,
+    s_types.AlterInheritingType[ObjectType],
+):
     astnode = qlast.AlterObjectType
 
     def _alter_finalize(

@@ -791,6 +791,31 @@ class RenameType(sd.RenameObject[TypeT]):
             return super()._get_ast(schema, context, parent_node=parent_node)
 
 
+class AlterType(sd.AlterObject[TypeT]):
+
+    def canonicalize_alter_from_external_ref(
+        self,
+        schema: s_schema.Schema,
+        context: sd.CommandContext,
+    ) -> None:
+        super().canonicalize_alter_from_external_ref(schema, context)
+        src = self.maybe_get_object_aux_data('source')
+        if src is not None:
+            src_ptr_name = self.get_object_aux_data('source_ptr')
+            src_ptr = src.getptr(schema, s_name.UnqualName(src_ptr_name))
+            _, cmd_alter, alter_ctx = src_ptr.init_delta_branch(
+                schema, context, cmdtype=sd.AlterObject)
+
+            with alter_ctx():
+                type_cmd, _ = cmd_alter.process_computable(
+                    self.get_attribute_value('expr').qlast,
+                    schema,
+                    context,
+                )
+
+                self.add(type_cmd)
+
+
 class DeleteType(sd.DeleteObject[TypeT]):
 
     def _get_ast(
@@ -804,6 +829,13 @@ class DeleteType(sd.DeleteObject[TypeT]):
             return None
         else:
             return super()._get_ast(schema, context, parent_node=parent_node)
+
+
+class AlterInheritingType(
+    inheriting.AlterInheritingObject[InheritingTypeT],
+    AlterType[InheritingTypeT],
+):
+    pass
 
 
 class CompoundTypeCommandContext(sd.ObjectCommandContext[InheritingType]):
@@ -2277,7 +2309,7 @@ class CreateCollectionType(
 
 class AlterCollectionType(
     CollectionTypeCommand[CollectionTypeT],
-    sd.AlterObject[CollectionTypeT],
+    AlterType[CollectionTypeT],
 ):
     pass
 

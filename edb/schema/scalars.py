@@ -588,7 +588,7 @@ class RebaseScalarType(
 
 class AlterScalarType(
     ScalarTypeCommand,
-    inheriting.AlterInheritingObject[ScalarType],
+    s_types.AlterInheritingType[ScalarType],
 ):
     astnode = qlast.AlterScalarType
 
