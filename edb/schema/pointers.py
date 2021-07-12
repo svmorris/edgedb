@@ -1057,22 +1057,18 @@ class PointerCommandOrFragment(
                     self,
                     self.get_attribute_source_context('target'),
                 )
-            target_cmd, base = self._parse_computable(
+            target_cmd, base = self.process_computable(
                 target_ref.expr, schema, context)
-        else:
-            base = None
-            target_cmd = None
-
-        if target_cmd is not None:
             schema = target_cmd.apply(schema, context)
 
-        if base is not None:
             self.set_attribute_value(
-                'bases', so.ObjectList.create(schema, [base]),
+                'bases',
+                so.ObjectList.create(schema, [base]),
             )
 
             self.set_attribute_value(
-                'is_derived', True
+                'is_derived',
+                True,
             )
 
             if context.declarative:
@@ -1103,10 +1099,7 @@ class PointerCommandOrFragment(
                 )
                 spec_type = self.get_attribute_value('target')
                 assert not isinstance(spec_type, ComputableRef)
-                target_ref = ComputableRef(
-                    expr,
-                    specified_type=spec_type,
-                )
+                target_ref = ComputableRef(expr, specified_type=spec_type)
 
                 self.set_attribute_value(
                     'target',
@@ -1121,7 +1114,7 @@ class PointerCommandOrFragment(
 
             self.discard_attribute('expr')
 
-    def _parse_computable(
+    def process_computable(
         self,
         expr: qlast.Base,
         schema: s_schema.Schema,
