@@ -1,3 +1,10 @@
+My changes
+==========
+This fork of edb is only for security testing. **Do not** use this for development. Instead visit the [original repo](https://github.com/edgedb/edgedb/)
+
+ORIGINAL README
+===============
+
 <p align="center">
   <a href="https://edgedb.com"><img width="160px" src="logo.svg"></a>
 </p>
