@@ -1,5 +1,4 @@
-My changes
-==========
+
 This fork of edb is only for security testing. **Do not** use this for development. Instead visit the [original repo](https://github.com/edgedb/edgedb/)
 
 ORIGINAL README
